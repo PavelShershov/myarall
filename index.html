@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AR with Persistent Model</title>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2/aframe/build/aframe-ar.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+
+  <script>
+    // Регистрируем новый компонент для A-Frame
+    AFRAME.registerComponent('persistent-anchor', {
+      init: function () {
+        // Находим маркер на сцене (предполагаем, что у него есть id="ar-marker")
+        this.marker = document.querySelector('#ar-marker');
+        // Изначально маркер не был найден
+        this.markerFound = false; 
+      },
+
+      tick: function () {
+        // Если маркера нет в DOM, выходим
+        if (!this.marker) return;
+
+        // Получаем состояние видимости маркера через Three.js объект
+        const markerVisible = this.marker.object3D.visible;
+
+        if (markerVisible) {
+          // МАРКЕР ВИДЕН: Копируем позицию и поворот от маркера к модели
+          // Берем объект Three.js маркера и текущей сущности (это и есть наша модель)
+          this.el.object3D.position.copy(this.marker.object3D.position);
+          this.el.object3D.quaternion.copy(this.marker.object3D.quaternion);
+          this.markerFound = true; // Ставим флаг, что мы хоть раз видели маркер
+        } else {
+          // МАРКЕР НЕ ВИДЕН: НИЧЕГО НЕ ДЕЛАЕМ!
+          // Объект остается на том месте, где был в последний раз, когда маркер был виден.
+          // Если вы хотите, чтобы модель появлялась ТОЛЬКО после первого нахождения маркера,
+          // можно добавить условие: if (this.markerFound) { /* оставляем объект видимым */ }
+          if (!this.markerFound) {
+            // Если маркер еще ни разу не находили, можно скрыть модель
+            this.el.object3D.visible = false;
+          } else {
+            // Как только маркер найден, модель становится видимой и больше не исчезает
+            this.el.object3D.visible = true;
+          }
+        }
+      }
+    });
+  </script>
+</head>
+<body style="margin: 0; overflow: hidden;">
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+    
+    <!-- Маркер. Теперь внутри него ничего нет, кроме возможной отладочной информации.
+         Добавляем ID, чтобы наш компонент мог его найти. -->
+    <a-marker id="ar-marker" type="pattern" preset="hiro"></a-marker>
+
+    <!-- НАША МОДЕЛЬ. Она находится ВНЕ маркера, но в сцене.
+         К ней применен наш компонент persistent-anchor. -->
+    <a-entity
+      persistent-anchor
+      gltf-model="url(model.glb)"
+      animation-mixer
+      position="0 0 0"
+      scale="0.3 0.3 0.3"
+      rotation="0 0 0"
+    ></a-entity>
+
+    <!-- Камера остается как есть -->
+    <a-entity camera></a-entity>
+
+  </a-scene>
+</body>
+</html>
